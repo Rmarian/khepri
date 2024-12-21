@@ -194,6 +194,7 @@ start() ->
 %% @see start/2.
 
 start(RaSystemOrDataDir) ->
+   khepri:info("Khepri hacked by Radu"),
     case application:ensure_all_started(khepri) of
         {ok, _} ->
             StoreId = get_default_store_id(),
