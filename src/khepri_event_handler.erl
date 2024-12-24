@@ -31,7 +31,7 @@
 
 -define(SILENCE_ERROR_FOR, 10000).
 
--record(?MODULE, {trigger_crashes = #{}}).
+-record(?MODULE, {trigger_crashes = #{}, registered_event_callbacks= fun(Path, Value) -> io:format("Tree path ~p was deleted~n", [Path]) end}).
 
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
@@ -46,12 +46,22 @@ init(_) ->
     State = #?MODULE{},
     {ok, State}.
 
+%% todo rmarian - make this more generic
+handle_call({register_callback, Callback}, From, State) ->
+  NewState = State#?MODULE{registered_event_callbacks=Callback},
+  {reply, ok, NewState};
+
 handle_call(Request, From, State) ->
     ?LOG_WARNING(
        "Unhandled handle_call request from ~0p: ~p",
        [From, Request]),
     {State1, Timeout} = log_accumulated_trigger_crashes(State),
     {reply, ok, State1, Timeout}.
+
+%% todo rmarian - support update/insert as well
+handle_cast({delete, PathPattern, Value}, #?MODULE{ registered_event_callbacks = Callback} = State) ->
+  Callback(PathPattern, Value),
+  {noreply, State};
 
 handle_cast(
   {handle_triggered_sprocs, StoreId, TriggeredStoredProcs},

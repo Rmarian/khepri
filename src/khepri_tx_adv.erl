@@ -356,7 +356,10 @@ compare_and_swap(PathPattern, DataPattern, Data, Options) ->
 %%
 %% @see khepri_adv:delete/2.
 
+% todo rmarian - send notification for all possible updates and delete operations (tx or not)
 delete(PathPattern) ->
+    Data = get(PathPattern),
+    gen_server:cast(khepri_event_handler, {delete, PathPattern, Data}),
     delete(PathPattern, #{}).
 
 -spec delete(PathPattern, Options) -> Ret when

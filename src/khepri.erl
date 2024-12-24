@@ -155,7 +155,8 @@
          import/2, import/3,
 
          info/0,
-         info/1, info/2]).
+         info/1, info/2,
+         register_callback/2]).
 
 -compile({no_auto_import, [get/1, get/2, put/2, erase/1]}).
 
@@ -3878,3 +3879,8 @@ info(StoreId, Options) ->
             ok
     end,
     ok.
+
+%% Allow clients to register DB events (PUT, DELETE) callbacks.
+%% todo rmarian - make events generic
+register_callback(delete, Callback) ->
+  gen_server:call(khepri_event_handler, {register_callback, Callback}).
