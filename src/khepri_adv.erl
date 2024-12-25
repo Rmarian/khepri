@@ -767,6 +767,7 @@ compare_and_swap(StoreId, PathPattern, DataPattern, Data, Options) ->
 
 do_put(StoreId, PathPattern, Payload, Options) ->
     Payload1 = khepri_payload:wrap(Payload),
+    gen_server:cast(khepri_event_handler, {put, PathPattern, Payload}),
     khepri_machine:put(StoreId, PathPattern, Payload1, Options).
 
 %% -------------------------------------------------------------------
@@ -871,6 +872,8 @@ delete(PathPattern, Options) when is_map(Options) ->
 delete(StoreId, PathPattern, Options) ->
     %% TODO: Not handled by khepri_machine:delete/3...
     Options1 = Options#{expect_specific_node => true},
+    Data = get(PathPattern),
+    gen_server:cast(khepri_event_handler, {delete, PathPattern, Data}),
     khepri_machine:delete(StoreId, PathPattern, Options1).
 
 %% -------------------------------------------------------------------
@@ -970,6 +973,8 @@ delete_many(PathPattern, Options) when is_map(Options) ->
 %% @see khepri:delete/3.
 
 delete_many(StoreId, PathPattern, Options) ->
+    Data = get(PathPattern),
+    gen_server:cast(khepri_event_handler, {delete, PathPattern, Data}),
     khepri_machine:delete(StoreId, PathPattern, Options).
 
 %% -------------------------------------------------------------------

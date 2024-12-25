@@ -218,6 +218,7 @@ put_many(PathPattern, Data, Options) ->
     khepri_machine:split_command_options(StoreId, Options),
     {TreeOptions, PutOptions} =
     khepri_machine:split_put_options(TreeAndPutOptions),
+    gen_server:cast(khepri_event_handler, {put, PathPattern, Data}),
     %% TODO: Ensure `CommandOptions' is unset.
     Fun = fun(State1, SideEffects) ->
                   khepri_machine:insert_or_update_node(
@@ -356,10 +357,7 @@ compare_and_swap(PathPattern, DataPattern, Data, Options) ->
 %%
 %% @see khepri_adv:delete/2.
 
-% todo rmarian - send notification for all possible updates and delete operations (tx or not)
 delete(PathPattern) ->
-    Data = get(PathPattern),
-    gen_server:cast(khepri_event_handler, {delete, PathPattern, Data}),
     delete(PathPattern, #{}).
 
 -spec delete(PathPattern, Options) -> Ret when
@@ -412,10 +410,12 @@ delete_many(PathPattern, Options) ->
     StoreId = khepri_machine:get_store_id(State),
     {_CommandOptions, TreeOptions} =
     khepri_machine:split_command_options(StoreId, Options),
+    Data = get(PathPattern),
+    gen_server:cast(khepri_event_handler, {delete, PathPattern1, Data}),
     %% TODO: Ensure `CommandOptions' is empty and `TreeOptions' doesn't
     %% contains put options.
     Fun = fun(State1, SideEffects) ->
-                  khepri_machine:delete_matching_nodes(
+      khepri_machine:delete_matching_nodes(
                     State1, PathPattern1, TreeOptions, SideEffects)
           end,
     handle_state_for_call(Fun).

@@ -156,7 +156,7 @@
 
          info/0,
          info/1, info/2,
-         register_callback/2]).
+         register_callback/1]).
 
 -compile({no_auto_import, [get/1, get/2, put/2, erase/1]}).
 
@@ -489,6 +489,12 @@
 %%
 %% See {@link khepri:handle_async_ret/2}.
 
+-type persistence_event() :: #{khepri_event => atom(), type => [ put | delete ], callback => fun()}.
+%% A persistence event (update/insert or delete)
+%%
+%% TODO rmarian - add better doc
+%%
+
 -export_type([store_id/0,
               ok/1,
               error/0, error/1,
@@ -525,7 +531,8 @@
               unwrapped_payload_ret/1,
               unwrapped_many_payloads_ret/0,
               unwrapped_many_payloads_ret/1,
-              async_ret/0]).
+              async_ret/0,
+              persistence_event/0]).
 
 %% -------------------------------------------------------------------
 %% Service management.
@@ -3880,7 +3887,9 @@ info(StoreId, Options) ->
     end,
     ok.
 
-%% Allow clients to register DB events (PUT, DELETE) callbacks.
-%% todo rmarian - make events generic
-register_callback(delete, Callback) ->
+-spec register_callback(EventType) -> ok | Error when
+  EventType :: persistence_event(),
+  Error :: khepri:error().
+
+register_callback(#khepri_event{ type = delete, callback = Callback} = EventType) ->
   gen_server:call(khepri_event_handler, {register_callback, Callback}).
