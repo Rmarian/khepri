@@ -3891,5 +3891,5 @@ info(StoreId, Options) ->
   EventType :: persistence_event(),
   Error :: khepri:error().
 
-register_callback(#khepri_event{ type = delete, callback = Callback} = EventType) ->
-  gen_server:call(khepri_event_handler, {register_callback, Callback}).
+register_callback(EventType) ->
+  gen_server:call(khepri_event_handler, {register_callback, EventType}).

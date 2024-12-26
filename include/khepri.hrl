@@ -110,6 +110,8 @@
 -record(if_any,
         {conditions = [] :: [khepri_path:pattern_component()]}).
 
+-record(khepri_event, {type = delete, callback = fun() -> ok end}).
+
 %% -------------------------------------------------------------------
 %% Error tuple format.
 %% -------------------------------------------------------------------

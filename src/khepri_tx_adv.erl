@@ -410,7 +410,7 @@ delete_many(PathPattern, Options) ->
     StoreId = khepri_machine:get_store_id(State),
     {_CommandOptions, TreeOptions} =
     khepri_machine:split_command_options(StoreId, Options),
-    Data = get(PathPattern),
+    Data = get_many(PathPattern),
     gen_server:cast(khepri_event_handler, {delete, PathPattern1, Data}),
     %% TODO: Ensure `CommandOptions' is empty and `TreeOptions' doesn't
     %% contains put options.
