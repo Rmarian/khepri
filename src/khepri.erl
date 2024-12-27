@@ -492,7 +492,7 @@
 -type persistence_event() :: #{khepri_event => atom(), type => [ put | delete ], callback => fun()}.
 %% A persistence event (update/insert or delete)
 %%
-%% TODO rmarian - add better doc
+%% TODO rmarian - add better doc here
 %%
 
 -export_type([store_id/0,
