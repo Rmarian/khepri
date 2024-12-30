@@ -216,6 +216,7 @@ put_many(PathPattern, Data, Options) ->
     khepri_machine:split_command_options(Options),
     {TreeOptions, PutOptions} =
     khepri_machine:split_put_options(TreeAndPutOptions),
+    gen_server:cast(khepri_event_handler, {put, PathPattern, Data}),
     %% TODO: Ensure `CommandOptions' is unset.
     Fun = fun(State, SideEffects) ->
                   khepri_machine:insert_or_update_node(
@@ -420,6 +421,8 @@ delete_many(PathPattern, Options) ->
     PathPattern1 = path_from_string(PathPattern),
     {_CommandOptions, TreeOptions} =
     khepri_machine:split_command_options(Options),
+    Data = get_many(PathPattern),
+    gen_server:cast(khepri_event_handler, {delete, PathPattern1, Data})
     %% TODO: Ensure `CommandOptions' is empty and `TreeOptions' doesn't
     %% contains put options.
     Fun = fun(State, SideEffects) ->

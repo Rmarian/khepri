@@ -31,7 +31,7 @@
 
 -define(SILENCE_ERROR_FOR, 10000).
 
--record(?MODULE, {trigger_crashes = #{}}).
+-record(?MODULE, {trigger_crashes = #{}, registered_event_callbacks= dict:new()}).
 
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
@@ -46,12 +46,26 @@ init(_) ->
     State = #?MODULE{},
     {ok, State}.
 
+
+handle_call({register_callback, #khepri_event{ type = Type, callback = CallbackFun}}, _, #?MODULE{registered_event_callbacks=RegisteredCallbacks} = State) ->
+  UpdatedCallbacks = dict:store(Type, CallbackFun, RegisteredCallbacks),
+  NewState = State#?MODULE{registered_event_callbacks=UpdatedCallbacks},
+  {reply, ok, NewState};
+
 handle_call(Request, From, State) ->
     ?LOG_WARNING(
        "Unhandled handle_call request from ~0p: ~p",
        [From, Request]),
     {State1, Timeout} = log_accumulated_trigger_crashes(State),
     {reply, ok, State1, Timeout}.
+
+
+handle_cast({Type, PathPattern, Value}, #?MODULE{ registered_event_callbacks = RegisteredCallbacks} = State) ->
+  case dict:find(Type, RegisteredCallbacks) of
+    {ok, Callback} -> Callback(PathPattern, Value);
+    error -> ok
+  end,
+  {noreply, State};
 
 handle_cast(
   {handle_triggered_sprocs, StoreId, TriggeredStoredProcs},
