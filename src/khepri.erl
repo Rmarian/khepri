@@ -157,7 +157,7 @@
          info/0,
          info/1, info/2,
 
-         register_callback/1]]).
+         register_callback/1]).
 
 -compile({no_auto_import, [get/1, get/2, put/2, erase/1]}).
 
