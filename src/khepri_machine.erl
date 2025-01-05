@@ -1771,7 +1771,12 @@ delete_matching_nodes(State, PathPattern, TreeOptions, SideEffects) ->
             {State2, SideEffects1} = add_tree_change_side_effects(
                                        State, State1, Ret2, AppliedChanges,
                                        SideEffects),
-            {State2, {ok, Ret2}, SideEffects1 ++ [{send_msg, khepri_event_handler, {delete, PathPattern, Ret2}, [cast, local]}]};
+          case maps:keys(Ret2) of
+            [Key|_] ->
+              Value = maps:get(Key, Ret2),
+              {State2, {ok, Ret2}, SideEffects1 ++ [{send_msg, khepri_event_handler, {delete, Key, Value}, [cast, local]}]};
+            [] -> {State2, {ok, Ret2}, SideEffects1}
+          end;
         Error ->
             {State, Error, SideEffects}
     end.
