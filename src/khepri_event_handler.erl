@@ -62,9 +62,14 @@ handle_call(Request, From, State) ->
 
 handle_cast({Type, PathPattern, Value}, #?MODULE{ registered_event_callbacks = RegisteredCallbacks} = State) ->
   case dict:find(Type, RegisteredCallbacks) of
-    {ok, Callback} -> Callback(PathPattern, Value);
+    {ok, Callback} -> Callback({Type, PathPattern, Value});
     error -> ok
   end,
+  {noreply, State};
+
+handle_cast({reset}, #?MODULE{ registered_event_callbacks = RegisteredCallbacks} = State) ->
+  List = dict:to_list(RegisteredCallbacks),
+  lists:foreach(List, fun({_, Callback}) -> Callback({reset, none, none}) end),
   {noreply, State};
 
 handle_cast(

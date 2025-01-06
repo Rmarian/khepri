@@ -1581,7 +1581,7 @@ snapshot_installed(
     OldState1 = convert_state(OldState, OldMacVer, NewMacVer),
     ok = update_projections(OldState1, NewState),
     ok = clear_compiled_projection_tree(),
-    [].
+    [{send_msg, khepri_event_handler, {reset}, [cast, local]}].
 
 %% @private
 
