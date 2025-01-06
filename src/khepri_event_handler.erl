@@ -48,7 +48,12 @@ init(_) ->
 
 
 handle_call({register_callback, #khepri_event{ type = Type, callback = CallbackFun}}, _, #?MODULE{registered_event_callbacks=RegisteredCallbacks} = State) ->
-  UpdatedCallbacks = dict:store(Type, CallbackFun, RegisteredCallbacks),
+  UpdatedCallbacks = case dict:is_key(Type, RegisteredCallbacks) of
+    true ->
+      ExistingCallbacks = dict:get(Type, RegisteredCallbacks),
+      dict:store(Type, [CallbackFun|ExistingCallbacks], RegisteredCallbacks);
+    false -> dict:store(Type, [CallbackFun], RegisteredCallbacks)
+  end,
   NewState = State#?MODULE{registered_event_callbacks=UpdatedCallbacks},
   {reply, ok, NewState};
 
@@ -62,7 +67,8 @@ handle_call(Request, From, State) ->
 
 handle_cast({Type, PathPattern, Value}, #?MODULE{ registered_event_callbacks = RegisteredCallbacks} = State) ->
   case dict:find(Type, RegisteredCallbacks) of
-    {ok, Callback} -> Callback({Type, PathPattern, Value});
+    {ok, Callbacks} ->
+      lists:foreach(Callbacks, fun(Callback) -> Callback({Type, PathPattern, Value}) end);
     error -> ok
   end,
   {noreply, State};
