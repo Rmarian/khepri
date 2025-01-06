@@ -49,11 +49,11 @@ init(_) ->
 
 handle_call({register_callback, #khepri_event{ type = Type, callback = CallbackFun}}, _, #?MODULE{registered_event_callbacks=RegisteredCallbacks} = State) ->
   UpdatedCallbacks = case dict:is_key(Type, RegisteredCallbacks) of
-    true ->
-      ExistingCallbacks = dict:get(Type, RegisteredCallbacks),
-      dict:store(Type, [CallbackFun|ExistingCallbacks], RegisteredCallbacks);
-    false -> dict:store(Type, [CallbackFun], RegisteredCallbacks)
-  end,
+                       true ->
+                         {ok, ExistingCallbacks} = dict:find(Type, RegisteredCallbacks),
+                         dict:store(Type, lists:flatten([CallbackFun|ExistingCallbacks]), RegisteredCallbacks);
+                       false -> dict:store(Type, [CallbackFun], RegisteredCallbacks)
+                     end,
   NewState = State#?MODULE{registered_event_callbacks=UpdatedCallbacks},
   {reply, ok, NewState};
 
@@ -68,14 +68,14 @@ handle_call(Request, From, State) ->
 handle_cast({Type, PathPattern, Value}, #?MODULE{ registered_event_callbacks = RegisteredCallbacks} = State) ->
   case dict:find(Type, RegisteredCallbacks) of
     {ok, Callbacks} ->
-      lists:foreach(Callbacks, fun(Callback) -> Callback({Type, PathPattern, Value}) end);
+      lists:foreach(fun(Callback) -> Callback({Type, PathPattern, Value}) end, Callbacks);
     error -> ok
   end,
   {noreply, State};
 
-handle_cast({reset}, #?MODULE{ registered_event_callbacks = RegisteredCallbacks} = State) ->
+handle_cast({reset, _, _}, #?MODULE{ registered_event_callbacks = RegisteredCallbacks} = State) ->
   List = dict:to_list(RegisteredCallbacks),
-  lists:foreach(List, fun({_, Callback}) -> Callback({reset, none, none}) end),
+  lists:foreach(fun({_, Callback}) -> Callback({reset, none, none}) end, List),
   {noreply, State};
 
 handle_cast(
