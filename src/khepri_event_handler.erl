@@ -64,6 +64,10 @@ handle_call(Request, From, State) ->
     {State1, Timeout} = log_accumulated_trigger_crashes(State),
     {reply, ok, State1, Timeout}.
 
+handle_cast({reset, _, _}, #?MODULE{ registered_event_callbacks = RegisteredCallbacks} = State) ->
+  List = dict:to_list(RegisteredCallbacks),
+  lists:foreach(fun({_, Callback}) -> Callback({reset, none, none}) end, List),
+  {noreply, State};
 
 handle_cast({Type, PathPattern, Value}, #?MODULE{ registered_event_callbacks = RegisteredCallbacks} = State) ->
   case dict:find(Type, RegisteredCallbacks) of
@@ -71,11 +75,6 @@ handle_cast({Type, PathPattern, Value}, #?MODULE{ registered_event_callbacks = R
       lists:foreach(fun(Callback) -> Callback({Type, PathPattern, Value}) end, Callbacks);
     error -> ok
   end,
-  {noreply, State};
-
-handle_cast({reset, _, _}, #?MODULE{ registered_event_callbacks = RegisteredCallbacks} = State) ->
-  List = dict:to_list(RegisteredCallbacks),
-  lists:foreach(fun({_, Callback}) -> Callback({reset, none, none}) end, List),
   {noreply, State};
 
 handle_cast(
