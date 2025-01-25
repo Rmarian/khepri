@@ -9,6 +9,7 @@
 -define(NO_PAYLOAD, '$__NO_PAYLOAD__').
 -record(p_data, {data :: khepri:data()}).
 -record(p_sproc, {sproc :: horus:horus_fun(),
+                  exec_mode :: ra_leader | local,
                   is_valid_as_tx_fun :: ro | rw | false}).
 
 -define(IS_KHEPRI_PAYLOAD(Payload), (Payload =:= ?NO_PAYLOAD orelse

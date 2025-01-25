@@ -1745,7 +1745,7 @@ insert_or_update_node(
             State1 = set_tree(State, Tree1),
             {State2, SideEffects1} = add_tree_change_side_effects(
                                        State, State1, Ret2, AppliedChanges,
-                                       SideEffects),
+                                       SideEffects, PathPattern),
             {State2, {ok, Ret2}, SideEffects1};
         Error ->
             {State, Error, SideEffects}
@@ -1777,7 +1777,7 @@ delete_matching_nodes(State, PathPattern, TreeOptions, SideEffects) ->
     end.
 
 add_tree_change_side_effects(
-  InitialState, NewState, Ret, KeepWhileAftermath, SideEffects) ->
+  InitialState, NewState, Ret, KeepWhileAftermath, SideEffects, PathPattern) ->
     %% We make a map where for each affected tree node, we indicate the type
     %% of change.
     Changes0 = maps:merge(Ret, KeepWhileAftermath),
@@ -1791,7 +1791,7 @@ add_tree_change_side_effects(
                        InitialState, NewState, Changes),
     {NewState1, NewSideEffects1} = add_trigger_side_effects(
                                      InitialState, NewState, Changes,
-                                     NewSideEffects),
+                                     NewSideEffects, PathPattern),
     SideEffects1 = lists:reverse(NewSideEffects1, SideEffects),
     {NewState1, SideEffects1}.
 
@@ -1892,7 +1892,7 @@ evaluate_projection(
     Effect = {aux, Trigger},
     [Effect | Effects].
 
-add_trigger_side_effects(InitialState, NewState, Changes, SideEffects) ->
+add_trigger_side_effects(InitialState, NewState, Changes, SideEffects, PathPattern) ->
     %% We want to consider the new state (with the updated tree), but we want
     %% to use triggers from the initial state, in case they were updated too.
     %% In other words, we want to evaluate triggers in the state they were at
@@ -1918,18 +1918,26 @@ add_trigger_side_effects(InitialState, NewState, Changes, SideEffects) ->
             %% This could lead to multiple execution of the same trigger,
             %% therefore the stored procedure must be idempotent.
 
-            LeaderExecutedProcs = lists:filtermap(fun(#triggered{sproc = StoredProc} = Trigger) ->
-                                                  #p_sproc{sproc = Fun, exec_mode  = ExecMode} = StoredProc,
+            LeaderExecutedProcs = lists:filtermap(fun(#triggered{sproc = StoredProc, props = Props} = Trigger) ->
+                                                  #{ data := {Fun, ExecMode}} = StoredProc,
                                                   case ExecMode of
-                                                    ra_leader -> {true, Trigger#triggered{sproc = Fun}};
+                                                    ra_leader ->
+                                                      UpdatedProps = dict:append(pathpattern, PathPattern, Props),
+                                                      UpdatedTrigger1 = Trigger#triggered{sproc = Fun},
+                                                      UpdatedTrigger2 = UpdatedTrigger1#triggered(props = UpdatedProps),
+                                                      {true, UpdatedTrigger2};
                                                     _ -> false
                                                   end
                                                end, TriggeredStoredProcs),
        
-            LocallyExecutedProcs = lists:filtermap(fun(#triggered{sproc = StoredProc} = Trigger) ->
-                                                    #p_sproc{sproc = Fun, exec_mode  = ExecMode} = StoredProc,
+            LocallyExecutedProcs = lists:filtermap(fun(#triggered{sproc = StoredProc, props = Props} = Trigger) ->
+                                                    #{ data := {Fun, ExecMode}} = StoredProc,
                                                     case ExecMode of
-                                                      local -> {true, Trigger#triggered{sproc = Fun}};
+                                                      local ->
+                                                        UpdatedProps = dict:append(pathpattern, PathPattern, Props),
+                                                        UpdatedTrigger1 = Trigger#triggered{sproc = Fun},
+                                                        UpdatedTrigger2 = UpdatedTrigger1#triggered(props = UpdatedProps),
+                                                        {true, UpdatedTrigger2};
                                                       _ -> false
                                                     end
                                                    end, TriggeredStoredProcs),
