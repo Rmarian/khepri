@@ -1917,16 +1917,36 @@ add_trigger_side_effects(InitialState, NewState, Changes, SideEffects) ->
             %%
             %% This could lead to multiple execution of the same trigger,
             %% therefore the stored procedure must be idempotent.
+
+            LeaderExecutedProcs = lists:filtermap(fun(#triggered{sproc = StoredProc} = Trigger) ->
+                                                  #p_sproc{sproc = Fun, exec_mode  = ExecMode} = StoredProc,
+                                                  case ExecMode of
+                                                    ra_leader -> {true, Trigger#triggered{sproc = Fun}};
+                                                    _ -> false
+                                                  end
+                                               end, TriggeredStoredProcs),
+       
+            LocallyExecutedProcs = lists:filtermap(fun(#triggered{sproc = StoredProc} = Trigger) ->
+                                                    #p_sproc{sproc = Fun, exec_mode  = ExecMode} = StoredProc,
+                                                    case ExecMode of
+                                                      local -> {true, Trigger#triggered{sproc = Fun}};
+                                                      _ -> false
+                                                    end
+                                                   end, TriggeredStoredProcs),
+
             NewState1 = set_emitted_triggers(
-                          NewState, EmittedTriggers ++ TriggeredStoredProcs),
+                          NewState, EmittedTriggers ++ LeaderExecutedProcs),
 
             %% We still emit a `mod_call' effect to wake up the event handler
             %% process so it doesn't have to poll the internal list.
-            SideEffect = {mod_call,
+            SideEffect = [{mod_call,
                           khepri_event_handler,
                           handle_triggered_sprocs,
-                          [StoreId, TriggeredStoredProcs]},
-            {NewState1, [SideEffect | SideEffects]}
+                          [StoreId, LeaderExecutedProcs]},
+                          {send_msg, khepri_event_handler,
+                            {handle_triggered_sprocs, StoreId, LocallyExecutedProcs},
+                            [cast, local]}],
+            {NewState1, SideEffect ++ SideEffects}
     end.
 
 list_triggered_sprocs(Tree, Changes, Triggers) ->
@@ -2008,8 +2028,8 @@ find_stored_proc(Tree, StoredProcPath) ->
     %% Non-existing nodes and nodes which are not stored procedures are
     %% ignored.
     case Ret of
-        {ok, #{StoredProcPath := #{sproc := StoredProc}}} -> StoredProc;
-        _                                                 -> undefined
+        {ok, #{StoredProcPath := StoredProc}} -> StoredProc;
+        _                                     -> undefined
     end.
 
 sort_triggered_sprocs(TriggeredStoredProcs) ->

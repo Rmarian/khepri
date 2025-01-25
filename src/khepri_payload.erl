@@ -85,13 +85,25 @@ data(Term) ->
 %%
 %% @see sproc().
 
+sproc({Fun, ExecMode}) when is_function(Fun) ->
+    #p_sproc{sproc = Fun,
+      %% This will be overridden with the correct value when the
+      %% function will be extracted.
+      exec_mode  = ExecMode,
+      is_valid_as_tx_fun = false};
+sproc({Fun, ExecMode}) when ?IS_HORUS_STANDALONE_FUN(Fun) ->
+    #p_sproc{sproc = Fun,
+      exec_mode  = ExecMode,
+      is_valid_as_tx_fun = false};
 sproc(Fun) when is_function(Fun) ->
     #p_sproc{sproc = Fun,
              %% This will be overridden with the correct value when the
              %% function will be extracted.
+             exec_mode = ra_leader,
              is_valid_as_tx_fun = false};
 sproc(Fun) when ?IS_HORUS_STANDALONE_FUN(Fun) ->
     #p_sproc{sproc = Fun,
+             exec_mode = ra_leader,
              is_valid_as_tx_fun = false}.
 
 -spec wrap(Payload) -> WrappedPayload when
@@ -109,6 +121,7 @@ sproc(Fun) when ?IS_HORUS_STANDALONE_FUN(Fun) ->
 %% @returns the wrapped payload.
 
 wrap(Payload) when ?IS_KHEPRI_PAYLOAD(Payload) -> Payload;
+wrap({Fun, ExecMode}) when is_function(Fun)    -> sproc({Fun, ExecMode});
 wrap(Fun) when is_function(Fun)                -> sproc(Fun);
 wrap(Data)                                     -> data(Data).
 
